@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Mistral Chat Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        #chatContainer {
+            height: 400px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #3498db;
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .llm-message {
+            background-color: #f1f1f1;
+            align-self: flex-start;
+        }
+        #promptInput {
+            width: calc(100% - 110px);
+            padding: 10px;
+            margin-right: 10px;
+        }
+        #sendBtn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #sendBtn:hover {
+            background-color: #2980b9;
+        }
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ollama Mistral Chat Interface</h1>
+    <div id="chatContainer"></div>
+    <input type="text" id="promptInput" placeholder="Enter your message here...">
+    <button id="sendBtn">Send</button>
+    <div class="loading">Generating response...</div>
+
+    <script>
+        const sendBtn = document.getElementById('sendBtn');
+        const promptInput = document.getElementById('promptInput');
+        const chatContainer = document.getElementById('chatContainer');
+        const loadingDiv = document.querySelector('.loading');
+
+        let conversationHistory = [];
+
+        function addMessage(content, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'llm-message'}`;
+            messageDiv.textContent = content;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        sendBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                return;
+            }
+
+            addMessage(prompt, true);
+            conversationHistory.push(`Human: ${prompt}`);
+            promptInput.value = '';
+            loadingDiv.style.display = 'block';
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        conversation_history: conversationHistory,
+                        model: 'mistral'
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Received data:", data);
+
+                if (data.response) {
+                    addMessage(data.response, false);
+                    conversationHistory.push(`AI: ${data.response}`);
+                } else {
+                    addMessage("No response received from the model.", false);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage(`An error occurred: ${error.message}`, false);
+            } finally {
+                loadingDiv.style.display = 'none';
+                sendBtn.disabled = false;
+            }
+        });
+
+        promptInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
