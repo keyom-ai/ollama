@@ -1,10 +1,10 @@
 # Mistral Chat Interface Setup
 
-This guide will walk you through setting up a chat interface for the Mistral language model using Ollama, Flask, and NGINX on a Linux server.
+This guide walks you through setting up a chat interface for the Mistral language model using Ollama, Flask, and NGINX on a Linux server (specifically tested on Amazon EC2 with Amazon Linux 2).
 
 ## Prerequisites
 
-- A Linux server (Ubuntu 20.04 LTS or later recommended)
+- A Linux server (Amazon EC2 instance with Amazon Linux 2 recommended)
 - Root or sudo access to the server
 
 ## Step 1: Install Required Software
@@ -12,9 +12,8 @@ This guide will walk you through setting up a chat interface for the Mistral lan
 Update your system and install the necessary packages:
 
 ```bash
-sudo apt update
-sudo apt upgrade -y
-sudo apt install -y python3 python3-pip nginx
+sudo yum update -y
+sudo yum install -y python3 python3-pip nginx
 ```
 
 ## Step 2: Install Ollama
@@ -29,6 +28,13 @@ After installation, pull the Mistral model:
 
 ```bash
 ollama pull mistral
+```
+
+Verify the installation:
+
+```bash
+which ollama
+ollama run mistral "Hello, are you working?"
 ```
 
 ## Step 3: Set Up the Python Environment
@@ -57,19 +63,21 @@ Create `app.py` and `index.html` in the `~/mistral-chat` directory. Copy the con
 Create an NGINX configuration file:
 
 ```bash
-sudo nano /etc/nginx/sites-available/mistral-chat
+sudo nano /etc/nginx/conf.d/mistral-chat.conf
 ```
 
-Add the following configuration (replace `your_domain.com` with your actual domain or server IP):
+Add the following configuration:
 
 ```nginx
 server {
     listen 80;
-    server_name your_domain.com;
+    server_name _;
+
+    root /home/ec2-user/mistral-chat;
+    index index.html;
 
     location / {
-        root /home/your_username/mistral-chat;
-        index index.html;
+        try_files $uri $uri/ =404;
     }
 
     location /generate {
@@ -83,11 +91,15 @@ server {
 }
 ```
 
-Enable the site and restart NGINX:
+Test the NGINX configuration:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/mistral-chat /etc/nginx/sites-enabled/
 sudo nginx -t
+```
+
+If the test is successful, restart NGINX:
+
+```bash
 sudo systemctl restart nginx
 ```
 
@@ -99,7 +111,7 @@ Create a systemd service file for Gunicorn:
 sudo nano /etc/systemd/system/mistral-chat.service
 ```
 
-Add the following content (replace `your_username` with your actual username):
+Add the following content:
 
 ```ini
 [Unit]
@@ -107,11 +119,11 @@ Description=Gunicorn instance to serve Mistral chat application
 After=network.target
 
 [Service]
-User=your_username
-Group=www-data
-WorkingDirectory=/home/your_username/mistral-chat
-Environment="PATH=/home/your_username/mistral-chat/venv/bin"
-ExecStart=/home/your_username/mistral-chat/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5001 app:app
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/mistral-chat
+Environment="PATH=/home/ec2-user/mistral-chat/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/ec2-user/mistral-chat/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5001 app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -124,15 +136,20 @@ sudo systemctl start mistral-chat
 sudo systemctl enable mistral-chat
 ```
 
-## Step 7: Firewall Configuration (if applicable)
+## Step 7: Set Correct Permissions
 
-If you're using UFW (Uncomplicated Firewall), allow HTTP traffic:
+Ensure NGINX has access to your application directory:
 
 ```bash
-sudo ufw allow 'Nginx Full'
+sudo chmod 755 /home/ec2-user
+sudo chmod -R 755 /home/ec2-user/mistral-chat
 ```
 
-## Step 8: Testing the Setup
+## Step 8: Firewall Configuration (if applicable)
+
+If you're using the AWS EC2 instance, make sure to open port 80 in your security group settings.
+
+## Step 9: Testing the Setup
 
 1. Ensure Ollama is running:
    ```bash
@@ -144,13 +161,43 @@ sudo ufw allow 'Nginx Full'
    sudo systemctl status mistral-chat
    ```
 
-3. Visit your domain or server IP in a web browser. You should see the chat interface.
+3. Visit your server's public IP or domain in a web browser. You should see the chat interface.
 
 ## Troubleshooting
 
-- Check NGINX error logs: `sudo tail -f /var/log/nginx/error.log`
-- Check application logs: `sudo journalctl -u mistral-chat`
-- Ensure proper permissions: The NGINX user (www-data) should have read access to your application directory.
+If you encounter issues, follow these steps:
+
+1. Check NGINX error logs:
+   ```bash
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+2. Check application logs:
+   ```bash
+   sudo journalctl -u mistral-chat
+   ```
+
+3. If you see permission errors, ensure the correct permissions are set:
+   ```bash
+   sudo chmod 755 /home/ec2-user
+   sudo chmod -R 755 /home/ec2-user/mistral-chat
+   ```
+
+4. If Ollama is not found, make sure it's in the PATH:
+   ```bash
+   which ollama
+   ```
+   Update the `mistral-chat.service` file with the correct PATH if necessary.
+
+5. Verify that the Mistral model is downloaded:
+   ```bash
+   ollama list
+   ```
+
+6. If changes are made to the Flask app, remember to restart the Gunicorn service:
+   ```bash
+   sudo systemctl restart mistral-chat
+   ```
 
 ## Security Considerations
 
