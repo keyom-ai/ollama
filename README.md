@@ -20,5 +20,22 @@ To run OLLAMA on a Mac, follow these steps:
 4. Try various prompts and observe the outputs.
 5. Experiment with different things:
    ```ollama run llama2 "Summarize the benefits of AI in healthcare" \```
-  
+## Running simple API with Flask to expose LLaMA2 or Mistral
+1. Ensure Python and Flask are installed:
+   ```pip install flask```
+2. Create a new Python file (e.g., ollama_api.py) and paste the code from [ollama-api.py](mac/ollama-api.py)
+3. Run the flask application:
+   ```python ollama_api.py```
+4. Test the API using curl or a tool like Postman:
+   ```curl -X POST http://localhost:5000/generate -H "Content-Type: application/json" -d '{"prompt": "Explain quantum computing in simple terms", "model": "llama2"}'```
+
+5. Extend the API:
+   - Add error handling
+   - Implement request validation
+   - Add support for streaming responses
+   - Create a simple web interface for interacting with the API
+
+
+
+
 
