@@ -11,7 +11,14 @@ This repository contains instructions and code for running OLLAMA on Linux and M
 
 To run OLLAMA on a Mac, follow these steps:
 
-1. **Install Homebrew:**
-   If you don't have Homebrew installed, open your Terminal and run the following command:
-   ```sh
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+1. Execute: ```curl https://ollama.ai/install.sh | sh```
+2. Pull a model, like Mistral or LLaMA 2
+   ```ollama pull mistral```
+   ```ollama pull llama2```
+
+3. Run: ```ollama run llama2```
+4. Try various prompts and observe the outputs.
+5. Experiment with different things:
+   ```ollama run llama2 "Summarize the benefits of AI in healthcare" \```
+  
+
